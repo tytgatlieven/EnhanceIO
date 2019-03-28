@@ -1,4 +1,3 @@
-Compatability for kernel versions >= 5.0/*
  *  eio.h
  *
  *  Copyright (C) 2012 STEC, Inc. All rights not specifically granted
