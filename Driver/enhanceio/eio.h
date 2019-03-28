@@ -1,4 +1,4 @@
- *  eio.h
+/*  eio.h
  *
  *  Copyright (C) 2012 STEC, Inc. All rights not specifically granted
  *   under a license included herein are reserved
