@@ -1165,7 +1165,8 @@ void eio_process_zero_size_bio(struct cache_c *dmc, struct bio *origbio)
 	op = bio_op(origbio);
 
 	EIO_ASSERT(EIO_BIO_BI_SIZE(origbio) == 0);
-	EIO_ASSERT(op != REQ_OP_READ);
+	//EIO_ASSERT(op != REQ_OP_READ);
+	//if (op == REQ_OP_READ) return; // ADAM
 
 	eio_issue_empty_barrier_flush(dmc->cache_dev->bdev, NULL,
 				      EIO_SSD_DEVICE, NULL, op, op_flags);
