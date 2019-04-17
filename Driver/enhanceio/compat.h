@@ -42,6 +42,9 @@
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0))
 #define COMPAT_NO_BIO_BIDEV
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0))
+#define COMPAT_GET_KTIME
+#endif
 
 /*Include features backported to RedHat kernels*/
 #ifdef RHEL_RELEASE_CODE
@@ -333,4 +336,12 @@ static inline struct block_device *blkdev_get_by_path(const char *path, fmode_t 
 #define EIO_BIO_COPY_DEV(DEST, SRC) \
 	do { (DEST)->bi_bdev = (SRC)->bi_bdev; } while (0)
 #define EIO_BIO_GET_QUEUE(bio) bdev_get_queue((bio)->bi_bdev)
+#endif
+
+#ifdef COMPAT_GET_KTIME
+#define GET_KTIME(time) ktime_get_real_ts64(time)
+#define TIME_STRUCT timespec64
+#else
+#define GET_KTIME(time) do_gettimeofday(time)
+#define TIME_STRUCT timeval
 #endif
