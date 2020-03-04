@@ -76,6 +76,35 @@ static void eio_check_dirty_cache_thresholds(struct cache_c *dmc);
 static void eio_post_mdupdate(struct work_struct *work);
 static void eio_post_io_callback(struct work_struct *work);
 
+
+/* In newer kernels, calling the queue's make_request_fn() always submits
+ * the IO. In older kernels however, there is a possibility for the request
+ * function to return 1 and expect us to handle the IO redirection (see raid0
+ * implementation in kernel 2.6.32). We must check the return value
+ * and potentially resubmit the IO.
+ */
+static inline
+void hdd_make_request(make_request_fn *origmfn, struct bio *bio)
+{
+	struct request_queue *q = NULL;
+	int __maybe_unused ret;
+	q = EIO_BIO_GET_QUEUE(bio);
+	if (unlikely(!q)) {
+		pr_err("EIO: Trying to access nonexistent block-device\n");
+		EIO_BIO_ENDIO(bio, -EIO);
+		return;
+	}
+
+#ifdef COMPAT_MAKE_REQUEST_FN_SUBMITS_IO
+	origmfn(q, bio);
+#else
+	ret = origmfn(q, bio);
+	if (ret) {
+		generic_make_request(bio);
+	}
+#endif
+}
+
 static void bc_addfb(struct bio_container *bc, struct eio_bio *ebio)
 {
 
@@ -2409,8 +2438,17 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 	struct eio_bio *eend = NULL;
 	struct eio_bio *enext = NULL;
 
-	pr_debug("new I/O, idx=%u, sector=%lu, size=%u, vcnt=%d,",
-	         EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
+	pr_debug("new I/O, dir=%d/%d, idx=%u, sector=%lu, size=%u, vcnt=%d,",
+	         data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
+
+	if (EIO_BIO_BI_IDX(bio) != 0) {
+		pr_debug("eio_map: pass-trought non zero idx, dir=%d/%d, idx=%u, sector=%lu, size=%u, vcnt=%d\n",
+			data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
+		hdd_make_request(dmc->origmfn, bio);
+			/* EIO_BIO_ENDIO(bio, 0); */
+		return DM_MAPIO_SUBMITTED;
+		// return 0;
+	}
 
 	if (EIO_BIO_BI_IDX(bio) != 0)
 		pr_debug("in eio_map bio_idx is %u", EIO_BIO_BI_IDX(bio));

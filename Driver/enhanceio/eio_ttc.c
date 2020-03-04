@@ -191,9 +191,9 @@ int eio_ttc_activate(struct cache_c *dmc)
 	dmc->dev_end_sect =
 		bdev->bd_part->start_sect + bdev->bd_part->nr_sects - 1;
 
-	pr_debug("eio_ttc_activate: Device/Partition" \
-		 " sector_start: %llu, end: %llu\n",
-		 (uint64_t)dmc->dev_start_sect, (uint64_t)dmc->dev_end_sect);
+	pr_info("eio_ttc_activate: Device/Partition" \
+		 " sector_start: %llu, end: %llu bdev %p bd_contains %p rq %p\n",
+		 (uint64_t)dmc->dev_start_sect, (uint64_t)dmc->dev_end_sect, bdev, bdev->bd_contains, rq);
 
 	error = 0;
 	origmfn = NULL;
