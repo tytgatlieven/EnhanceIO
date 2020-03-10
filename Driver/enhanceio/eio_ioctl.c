@@ -56,9 +56,10 @@ long eio_ioctl(struct file *filp, unsigned cmd, unsigned long arg)
 		break;
 
 	case EIO_IOC_DELETE:
-		do_delete = 1;
-
 	case EIO_IOC_DISABLE:
+
+		if (cmd == EIO_IOC_DELETE)
+			do_delete = 1;
 
 		cache = vmalloc(sizeof(struct cache_rec_short));
 		if (!cache)

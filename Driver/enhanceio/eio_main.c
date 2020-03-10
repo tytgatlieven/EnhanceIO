@@ -2438,11 +2438,11 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 	struct eio_bio *eend = NULL;
 	struct eio_bio *enext = NULL;
 
-	pr_debug("new I/O, dir=%d/%d, idx=%u, sector=%lu, size=%u, vcnt=%d,",
+	pr_debug("new I/O, dir=%d/%d, idx=%u, sector=%llu, size=%u, vcnt=%d,",
 	         data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
 
 	if (EIO_BIO_BI_IDX(bio) != 0) {
-		pr_debug("eio_map: pass-trought non zero idx, dir=%d/%d, idx=%u, sector=%lu, size=%u, vcnt=%d\n",
+		pr_debug("eio_map: pass-trought non zero idx, dir=%d/%d, idx=%u, sector=%llu, size=%u, vcnt=%d\n",
 			data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
 		hdd_make_request(dmc->origmfn, bio);
 			/* EIO_BIO_ENDIO(bio, 0); */
@@ -2461,6 +2461,12 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 		EIO_BIO_ENDIO(bio, 0);
 		pr_err
 			("eio_map: I/O with Discard flag received. Discard flag is not supported.\n");
+		return 0;
+	}
+
+	if (bio_op(bio) == REQ_OP_WRITE_ZEROES) {
+		EIO_BIO_ENDIO(bio, -EOPNOTSUPP);
+		pr_err("eio_map: I/O write zeroes is not supported\n");
 		return 0;
 	}
 
