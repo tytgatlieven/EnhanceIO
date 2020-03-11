@@ -2442,6 +2442,7 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 	         data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
 
 	if (EIO_BIO_BI_IDX(bio) != 0) {
+		EIO_BIO_BI_SECTOR(bio) += dmc->dev_start_sect;
 		pr_debug("eio_map: pass-trought non zero idx, dir=%d/%d, idx=%u, sector=%llu, size=%u, vcnt=%d\n",
 			data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
 		hdd_make_request(dmc->origmfn, bio);
