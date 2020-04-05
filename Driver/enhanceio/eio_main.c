@@ -52,7 +52,7 @@
  * cache read miss.
  */
 
-static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio);
+static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio, unsigned short ioprio);
 static int eio_write_peek(struct cache_c *dmc, struct eio_bio *ebio);
 static void eio_read(struct cache_c *dmc, struct bio_container *bc,
 		     struct eio_bio *ebegin);
@@ -2438,8 +2438,9 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 	struct eio_bio *eend = NULL;
 	struct eio_bio *enext = NULL;
 
-	pr_debug("new I/O, dir=%d/%d, idx=%u, sector=%llu, size=%u, vcnt=%d,",
-	         data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
+	pr_debug("new I/O, dir=%d/%d, idx=%u, sector=%llu, size=%u, vcnt=%d, current_prio=%u",
+	         data_dir, bio_op(bio), EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt, get_current_ioprio());
+	 bio_set_prio(bio, get_current_ioprio());
 
 	if (EIO_BIO_BI_IDX(bio) != 0) {
 		EIO_BIO_BI_SECTOR(bio) += dmc->dev_start_sect;
@@ -2655,7 +2656,7 @@ out:
  * 1: cache hit
  * 0: cache miss
  */
-static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio)
+static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio, unsigned short ioprio)
 {
 	index_t index;
 	int res;
@@ -2664,6 +2665,10 @@ static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio)
 	u_int8_t cstate;
 
 	spin_lock_irqsave(&dmc->cache_sets[ebio->eb_cacheset].cs_lock, flags);
+
+	if (IOPRIO_PRIO_CLASS(ioprio) == IOPRIO_CLASS_IDLE) {
+		pr_debug("eio_read_peek: bio prio %u", ioprio);
+	}
 
 	res = eio_lookup(dmc, ebio, &index);
 	ebio->eb_index = -1;
@@ -2713,7 +2718,7 @@ static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio)
 
 		/* cache is marked readonly or set to wronly mode. */
 		/* Do not allow READFILL on SSD */
-		if (dmc->cache_rdonly || dmc->sysctl_active.cache_wronly)
+		if (dmc->cache_rdonly || dmc->sysctl_active.cache_wronly || IOPRIO_PRIO_CLASS(ioprio) == IOPRIO_CLASS_IDLE)
 			goto out;
 
 		/*
@@ -2735,7 +2740,7 @@ static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio)
 	
 	/* cache is marked readonly or set to wronly mode. */
 	/* Do not allow READFILL on SSD */
-	if (dmc->cache_rdonly || dmc->sysctl_active.cache_wronly)
+	if (dmc->cache_rdonly || dmc->sysctl_active.cache_wronly || IOPRIO_PRIO_CLASS(ioprio) == IOPRIO_CLASS_IDLE)
 		goto out;
 	/*
 	 * Found an invalid block to be used.
@@ -2888,7 +2893,7 @@ eio_read(struct cache_c *dmc, struct bio_container *bc, struct eio_bio *ebegin)
 	ebio = ebegin;
 	while (ebio) {
 		enext = ebio->eb_next;
-		if (eio_read_peek(dmc, ebio) == 0)
+		if (eio_read_peek(dmc, ebio, bio_prio(bc->bc_bio)) == 0)
 			ucread = 1;
 		ebio = enext;
 	}
