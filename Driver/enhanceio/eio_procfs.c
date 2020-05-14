@@ -1022,6 +1022,42 @@ static int eio_version_open(struct inode *inode, struct file *file);
 static int eio_config_show(struct seq_file *seq, void *v);
 static int eio_config_open(struct inode *inode, struct file *file);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+static const struct proc_ops eio_version_operations = {
+	.proc_open		= eio_version_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+};
+
+static const struct proc_ops eio_stats_operations = {
+	.proc_open		= eio_stats_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+};
+
+static const struct proc_ops eio_errors_operations = {
+	.proc_open		= eio_errors_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+};
+
+static const struct proc_ops eio_iosize_hist_operations = {
+	.proc_open		= eio_iosize_hist_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+};
+
+static const struct proc_ops eio_config_operations = {
+	.proc_open		= eio_config_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+};
+#else
 static const struct file_operations eio_version_operations = {
 	.open		= eio_version_open,
 	.read		= seq_read,
@@ -1056,6 +1092,7 @@ static const struct file_operations eio_config_operations = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+#endif
 
 /*
  * Each ctl_table array needs to be 1 more than the actual number of
