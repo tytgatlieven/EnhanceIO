@@ -943,7 +943,7 @@ static int eio_dispatch_io(struct cache_c *dmc, struct eio_io_region *where,
 			un_bio->bvecs = bvec;
 			un_bio->io = io;
 			un_bio->op = op;
-			pr_debug("dispatch_io: processing unaligned I/O: sector %lu, count %lu",
+			pr_debug("dispatch_io: processing unaligned I/O: sector %llu, count %lu",
 	                         (where->sector + where->count - remaining),
 			         remaining);
 			atomic64_inc(&dmc->eio_stats.unaligned_ios);

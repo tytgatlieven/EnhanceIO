@@ -2409,7 +2409,7 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 	struct eio_bio *eend = NULL;
 	struct eio_bio *enext = NULL;
 
-	pr_debug("new I/O, idx=%u, sector=%lu, size=%u, vcnt=%d,",
+	pr_debug("new I/O, idx=%u, sector=%llu, size=%u, vcnt=%d,",
 	         EIO_BIO_BI_IDX(bio), EIO_BIO_BI_SECTOR(bio), EIO_BIO_BI_SIZE(bio), bio->bi_vcnt);
 
 	if (EIO_BIO_BI_IDX(bio) != 0)
