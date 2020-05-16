@@ -4,8 +4,9 @@
 
 COMMIT_REV ?= $(shell echo)
 KERNEL_SOURCE_VERSION ?= $(shell uname -r)
+ENHANCEIO_GIT_COMMIT_HASH ?= $(shell git log |head -1 | awk '{ print $$2 }')
 KERNEL_TREE ?= /lib/modules/$(KERNEL_SOURCE_VERSION)/build
-EXTRA_CFLAGS += -I$(KERNEL_TREE)/drivers/md -I./ -DCOMMIT_REV="\"$(COMMIT_REV)\""
+EXTRA_CFLAGS += -I$(KERNEL_TREE)/drivers/md -I./ -DCOMMIT_REV="\"$(COMMIT_REV)\"" -DENHANCEIO_GIT_COMMIT_HASH="\"$(ENHANCEIO_GIT_COMMIT_HASH)\""
 EXTRA_CFLAGS += -I$(KERNEL_TREE)/include/ -I$(KERNEL_TREE)/include/linux 
 obj-m	+= enhanceio.o enhanceio_lru.o enhanceio_fifo.o  enhanceio_rand.o
 enhanceio-y	+= \

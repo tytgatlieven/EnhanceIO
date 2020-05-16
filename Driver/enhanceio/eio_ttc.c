@@ -181,19 +181,22 @@ int eio_ttc_activate(struct cache_c *dmc)
 		pr_err("cache_create: Source device not found\n");
 		return -ENODEV;
 	}
-	rq = bdev->bd_disk->queue;
 
 	wholedisk = 0;
-	if (bdev == bdev->bd_contains)
+	if (bdev == bdev->bd_contains) {
 		wholedisk = 1;
+		rq = bdev->bd_disk->queue;
+	} else {
+		rq = bdev->bd_contains->bd_disk->queue;
+	}
 
 	dmc->dev_start_sect = bdev->bd_part->start_sect;
 	dmc->dev_end_sect =
 		bdev->bd_part->start_sect + bdev->bd_part->nr_sects - 1;
 
-	pr_debug("eio_ttc_activate: Device/Partition" \
-		 " sector_start: %llu, end: %llu\n",
-		 (uint64_t)dmc->dev_start_sect, (uint64_t)dmc->dev_end_sect);
+	pr_info("eio_ttc_activate: Device/Partition" \
+		 " sector_start: %llu, end: %llu bdev %p bd_contains %p rq %p\n",
+		 (uint64_t)dmc->dev_start_sect, (uint64_t)dmc->dev_end_sect, bdev, bdev->bd_contains, rq);
 
 	error = 0;
 	origmfn = NULL;
@@ -426,10 +429,10 @@ re_lookup:
 	if (unlikely(overlap)) {
 		up_read(&eio_ttc_lock[index]);
 
-		if (bio_op(bio) == REQ_OP_DISCARD) {
+		if (bio_op(bio) == REQ_OP_DISCARD || bio_op(bio) == REQ_OP_WRITE_ZEROES) {
 			pr_err
-				("eio_mfn: Overlap I/O with Discard flag." \
-				" Discard flag is not supported.\n");
+				("eio_mfn: Overlap I/O with Discard flag or Write zeroes." \
+				" Discard flag/Write zeroes is not supported.\n");
 			EIO_BIO_ENDIO(bio, -EOPNOTSUPP);
 		} else
 			ret = eio_overlap_split_bio(q, bio);
@@ -678,12 +681,17 @@ static int eio_dispatch_io_pages(struct cache_c *dmc,
                             EIO_BIO_GET_NR_VECS(where->bdev),
                             remaining_bvecs);
 		bio = bio_alloc(GFP_NOIO, num_bvecs);
-		EIO_BIO_SET_DEV(bio, where->bdev);
+		if (hddio) {
+			EIO_BIO_SET_DEV(bio, where->bdev->bd_contains);
+		} else {
+			EIO_BIO_SET_DEV(bio, where->bdev);
+		}
 		EIO_BIO_BI_SECTOR(bio) = where->sector + (where->count - remaining);
 
 		/* Remap the start sector of partition */
-		if (hddio)
+		if (hddio) {
 			EIO_BIO_BI_SECTOR(bio) += dmc->dev_start_sect;
+		}
 		bio_set_op_attrs(bio, op, op_flags);
 		bio->bi_end_io = eio_endio;
 		bio->bi_private = io;
@@ -944,6 +952,7 @@ static int eio_dispatch_io(struct cache_c *dmc, struct eio_io_region *where,
 			un_bio->io = io;
 			un_bio->op = op;
 			pr_debug("dispatch_io: processing unaligned I/O: sector %llu, count %lu",
+
 	                         (where->sector + where->count - remaining),
 			         remaining);
 			atomic64_inc(&dmc->eio_stats.unaligned_ios);
@@ -983,13 +992,18 @@ static int eio_dispatch_io(struct cache_c *dmc, struct eio_io_region *where,
 				EIO_ALIGN_SECTOR(where->bdev, remaining);
 		}
 		bio = bio_alloc(GFP_NOIO, num_bvecs);
-		EIO_BIO_SET_DEV(bio, where->bdev);
+		if (hddio) {
+			EIO_BIO_SET_DEV(bio, where->bdev->bd_contains);
+		} else {
+			EIO_BIO_SET_DEV(bio, where->bdev);
+		}
 		EIO_BIO_BI_SECTOR(bio) = where->sector +
 			                 (where->count - remaining);
 
 		/* Remap the start sector of partition */
-		if (hddio)
+		if (hddio) {
 			EIO_BIO_BI_SECTOR(bio) += dmc->dev_start_sect;
+		}
 
 		bio_set_op_attrs(bio, op, op_flags);
 		bio->bi_end_io = eio_endio;
